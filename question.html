@@ -58,12 +58,55 @@
         
         let timeoutTimer = null;
         
+        // localStorage helper functions for GitHub Pages mode
+        function getQuestionsFromLocalStorage() {
+            try {
+                const data = localStorage.getItem('chgk_questions');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse questions from localStorage:', e);
+                return {};
+            }
+        }
+        
+        async function loadQuestionsFromFile() {
+            try {
+                const response = await fetch('questions.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.questions || {};
+                }
+            } catch (e) {
+                console.log('Could not load questions.json:', e);
+            }
+            return {};
+        }
+        
+        function getAttempts() {
+            try {
+                const data = localStorage.getItem('chgk_attempts');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse attempts from localStorage:', e);
+                return {};
+            }
+        }
+        
+        function saveAttempts(attempts) {
+            try {
+                localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+            } catch (e) {
+                console.error('Failed to save attempts to localStorage:', e);
+            }
+        }
+        
         async function loadQuestion() {
             if (!questionId) {
                 document.getElementById('questionText').textContent = 'Ошибка: ID вопроса не указан';
                 return;
             }
             
+            // Try API first
             try {
                 const response = await fetch(`/api/question/${questionId}`);
                 const data = await response.json();
@@ -71,12 +114,31 @@
                 if (response.ok) {
                     document.getElementById('questionText').textContent = data.question;
                     document.getElementById('answerForm').style.display = 'block';
-                } else {
-                    document.getElementById('questionText').textContent = 'Ошибка: ' + data.error;
+                    return;
                 }
             } catch (error) {
-                document.getElementById('questionText').textContent = 'Ошибка загрузки вопроса: ' + error.message;
+                console.log('API not available, trying static questions.json or localStorage');
             }
+            
+            // Try loading from questions.json (GitHub Pages with pre-added questions)
+            const fileQuestions = await loadQuestionsFromFile();
+            
+            if (fileQuestions[questionId]) {
+                document.getElementById('questionText').textContent = fileQuestions[questionId].question;
+                document.getElementById('answerForm').style.display = 'block';
+                return;
+            }
+            
+            // Fallback to localStorage (GitHub Pages with dynamically created questions)
+            const localQuestions = getQuestionsFromLocalStorage();
+            
+            if (localQuestions[questionId]) {
+                document.getElementById('questionText').textContent = localQuestions[questionId].question;
+                document.getElementById('answerForm').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('questionText').textContent = 'Вопрос не найден';
         }
         
         function startTimeout(seconds) {
@@ -121,6 +183,7 @@
                 return;
             }
             
+            // Try API first
             try {
                 const response = await fetch(`/api/answer/${questionId}`, {
                     method: 'POST',
@@ -182,8 +245,108 @@
                         resultCard.style.display = 'none';
                     }, 3000);
                 }
+                return;
             } catch (error) {
-                alert('Ошибка при отправке ответа: ' + error.message);
+                console.log('API not available, using localStorage');
+            }
+            
+            // Fallback to localStorage (GitHub Pages mode)
+            const answerLower = answer.toLowerCase();
+            
+            // Try loading from questions.json first
+            const fileQuestions = await loadQuestionsFromFile();
+            let questions = fileQuestions;
+            
+            // If not found, try localStorage
+            if (!questions[questionId]) {
+                questions = getQuestionsFromLocalStorage();
+            }
+            
+            const attempts = getAttempts();
+            
+            if (!questions[questionId]) {
+                alert('Вопрос не найден');
+                return;
+            }
+            
+            // Check for timeout
+            const attemptKey = `${questionId}:${clientId}`;
+            
+            if (attempts[attemptKey]) {
+                const lastAttempt = new Date(attempts[attemptKey]);
+                const now = new Date();
+                const timeSince = (now - lastAttempt) / 1000; // seconds
+                
+                if (timeSince < 30) {
+                    const remaining = Math.ceil(30 - timeSince);
+                    
+                    const resultCard = document.getElementById('resultCard');
+                    const resultIcon = document.getElementById('resultIcon');
+                    const resultTitle = document.getElementById('resultTitle');
+                    const resultMessage = document.getElementById('resultMessage');
+                    
+                    resultCard.className = 'card error-card';
+                    resultIcon.textContent = '⏱️';
+                    resultTitle.textContent = 'Подождите';
+                    resultMessage.textContent = `Подождите ${remaining} секунд перед следующей попыткой`;
+                    resultCard.style.display = 'block';
+                    
+                    startTimeout(remaining);
+                    
+                    // Hide result after 3 seconds
+                    setTimeout(() => {
+                        resultCard.style.display = 'none';
+                    }, 3000);
+                    
+                    return;
+                }
+            }
+            
+            const correctAnswer = questions[questionId].answer.toLowerCase();
+            const isCorrect = answerLower === correctAnswer;
+            
+            const resultCard = document.getElementById('resultCard');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMessage = document.getElementById('resultMessage');
+            const successImageContainer = document.getElementById('successImageContainer');
+            
+            if (isCorrect) {
+                resultCard.className = 'card success-card';
+                resultIcon.textContent = '🎉';
+                resultTitle.textContent = 'Поздравляем!';
+                resultMessage.textContent = 'Ответ правильный!';
+                successImageContainer.style.display = 'none';
+                
+                document.getElementById('answerForm').style.display = 'none';
+                resultCard.style.display = 'block';
+                
+                // Clear the attempt record
+                if (attempts[attemptKey]) {
+                    delete attempts[attemptKey];
+                    saveAttempts(attempts);
+                }
+            } else {
+                resultCard.className = 'card error-card';
+                resultIcon.textContent = '❌';
+                resultTitle.textContent = 'Неправильно';
+                resultMessage.textContent = 'Неправильный ответ. Попробуйте снова через 30 секунд.';
+                successImageContainer.style.display = 'none';
+                
+                resultCard.style.display = 'block';
+                
+                // Record failed attempt
+                attempts[attemptKey] = new Date().toISOString();
+                saveAttempts(attempts);
+                
+                startTimeout(30);
+                
+                document.getElementById('answerInput').value = '';
+                
+                // Hide result after 3 seconds
+                setTimeout(() => {
+                    resultCard.style.display = 'none';
+                }, 3000);
             }
         });
         

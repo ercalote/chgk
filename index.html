@@ -43,6 +43,42 @@
     </div>
     
     <script>
+        // Check if backend API is available
+        let apiAvailable = true;
+        
+        // Try to detect if we're on GitHub Pages or static hosting
+        async function checkApiAvailability() {
+            try {
+                const response = await fetch('/api/question/test', { method: 'HEAD' });
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // For static hosting (GitHub Pages), use localStorage
+        function getQuestions() {
+            try {
+                const data = localStorage.getItem('chgk_questions');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse questions from localStorage:', e);
+                return {};
+            }
+        }
+        
+        function saveQuestions(questions) {
+            try {
+                localStorage.setItem('chgk_questions', JSON.stringify(questions));
+            } catch (e) {
+                console.error('Failed to save questions to localStorage:', e);
+            }
+        }
+        
+        function generateId() {
+            return 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+        }
+        
         document.getElementById('questionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -65,6 +101,7 @@
                 return;
             }
             
+            // Try API first, fallback to localStorage
             try {
                 const response = await fetch('/api/question', {
                     method: 'POST',
@@ -88,7 +125,28 @@
                     alert('Ошибка: ' + data.error);
                 }
             } catch (error) {
-                alert('Ошибка при создании вопроса: ' + error.message);
+                // API not available, use localStorage (GitHub Pages mode)
+                console.log('API not available, using localStorage');
+                
+                const questionId = generateId();
+                const questions = getQuestions();
+                
+                questions[questionId] = {
+                    question: question,
+                    answer: answer.toLowerCase(),
+                    created_at: new Date().toISOString()
+                };
+                
+                saveQuestions(questions);
+                
+                // Generate URL for GitHub Pages format
+                const fullUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'question.html?id=' + questionId;
+                document.getElementById('questionLink').value = fullUrl;
+                document.getElementById('linkCard').style.display = 'block';
+                document.getElementById('questionForm').reset();
+                
+                // Scroll to result
+                document.getElementById('linkCard').scrollIntoView({ behavior: 'smooth' });
             }
         });
         
