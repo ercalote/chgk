@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Что? Где? Когда?</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ЧГК</div>
+        <h1>Админ панель</h1>
+        <p class="subtitle">Что? Где? Когда?</p>
+        
+        <div class="card">
+            <h2>Создать новый вопрос</h2>
+            <form id="questionForm">
+                <div class="form-group">
+                    <label for="question">Вопрос:</label>
+                    <textarea id="question" name="question" rows="5" placeholder="Введите вопрос..." required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="answer">Правильный ответ:</label>
+                    <input type="text" id="answer" name="answer" placeholder="Введите ответ..." required>
+                    <small>Ответы не чувствительны к регистру</small>
+                </div>
+                
+                <button type="submit" class="btn-primary">Создать вопрос</button>
+            </form>
+        </div>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div id="linkCard" class="card success-card" style="display: none;">
+            <h2>✓ Вопрос создан!</h2>
+            <p>Уникальная ссылка на вопрос:</p>
+            <div class="link-box">
+                <input type="text" id="questionLink" readonly>
+                <button onclick="copyLink(event)" class="btn-secondary">Копировать</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize localStorage if needed
+        function getQuestions() {
+            const data = localStorage.getItem('chgk_questions');
+            return data ? JSON.parse(data) : {};
+        }
+        
+        function saveQuestions(questions) {
+            localStorage.setItem('chgk_questions', JSON.stringify(questions));
+        }
+        
+        function getAttempts() {
+            const data = localStorage.getItem('chgk_attempts');
+            return data ? JSON.parse(data) : {};
+        }
+        
+        function saveAttempts(attempts) {
+            localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+        }
+        
+        function generateId() {
+            return 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        document.getElementById('questionForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const questionText = document.getElementById('question').value.trim();
+            const answer = document.getElementById('answer').value.trim();
+            
+            if (!questionText || !answer) {
+                alert('Вопрос и ответ обязательны');
+                return;
+            }
+            
+            // Validate input lengths
+            if (questionText.length > 5000) {
+                alert('Вопрос слишком длинный (максимум 5000 символов)');
+                return;
+            }
+            
+            if (answer.length > 500) {
+                alert('Ответ слишком длинный (максимум 500 символов)');
+                return;
+            }
+            
+            const questionId = generateId();
+            const questions = getQuestions();
+            
+            questions[questionId] = {
+                question: questionText,
+                answer: answer.toLowerCase(),
+                created_at: new Date().toISOString()
+            };
+            
+            saveQuestions(questions);
+            
+            // Generate URL
+            const fullUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'question.html?id=' + questionId;
+            document.getElementById('questionLink').value = fullUrl;
+            document.getElementById('linkCard').style.display = 'block';
+            document.getElementById('questionForm').reset();
+            
+            // Scroll to result
+            document.getElementById('linkCard').scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        function copyLink(event) {
+            const linkInput = document.getElementById('questionLink');
+            linkInput.select();
+            
+            // Use modern Clipboard API with fallback
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(linkInput.value);
+            } else {
+                // Fallback for older browsers
+                document.execCommand('copy');
+            }
+            
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Скопировано!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
