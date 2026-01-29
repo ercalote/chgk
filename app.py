@@ -54,8 +54,13 @@ def create_question():
     if len(answer) > 500:
         return jsonify({'error': 'Ответ слишком длинный (максимум 500 символов)'}), 400
     
-    if success_image and len(success_image) > 2000:
-        return jsonify({'error': 'URL изображения слишком длинный (максимум 2000 символов)'}), 400
+    if success_image:
+        if len(success_image) > 2000:
+            return jsonify({'error': 'URL изображения слишком длинный (максимум 2000 символов)'}), 400
+        
+        # Validate URL protocol for security (prevent XSS and other attacks)
+        if not (success_image.startswith('http://') or success_image.startswith('https://')):
+            return jsonify({'error': 'URL изображения должен начинаться с http:// или https://'}), 400
     
     question_id = str(uuid.uuid4())
     data_obj['questions'][question_id] = {
