@@ -213,14 +213,22 @@
                 <div class="question-item">
                     <div class="question-preview">${escapeHtml(q.question)}</div>
                     <div class="question-meta">
-                        <span class="question-id">${q.id}</span>
+                        <span class="question-id">${escapeHtml(q.id)}</span>
                         <div class="question-links">
-                            <a href="${q.url}" class="btn-small btn-view" target="_blank">Открыть</a>
-                            <button class="btn-small btn-copy" onclick="copyUrl('${escapeHtml(q.url)}', this)">Копировать ссылку</button>
+                            <a href="${escapeHtml(q.url)}" class="btn-small btn-view" target="_blank">Открыть</a>
+                            <button class="btn-small btn-copy" data-url="${escapeHtml(q.url)}">Копировать ссылку</button>
                         </div>
                     </div>
                 </div>
             `).join('');
+            
+            // Add event listeners for copy buttons
+            questionsList.querySelectorAll('.btn-copy').forEach(button => {
+                button.addEventListener('click', function() {
+                    const url = this.getAttribute('data-url');
+                    copyUrl(url, this);
+                });
+            });
         }
         
         function escapeHtml(text) {
@@ -239,17 +247,30 @@
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(fullUrl).then(() => {
                     showCopiedState(button);
+                }).catch((err) => {
+                    console.error('Failed to copy to clipboard:', err);
+                    // Fallback to old method
+                    fallbackCopy(fullUrl, button);
                 });
             } else {
                 // Fallback for older browsers
-                const input = document.createElement('input');
-                input.value = fullUrl;
-                document.body.appendChild(input);
-                input.select();
-                document.execCommand('copy');
-                document.body.removeChild(input);
-                showCopiedState(button);
+                fallbackCopy(fullUrl, button);
             }
+        }
+        
+        function fallbackCopy(text, button) {
+            const input = document.createElement('input');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            try {
+                document.execCommand('copy');
+                showCopiedState(button);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Не удалось скопировать ссылку');
+            }
+            document.body.removeChild(input);
         }
         
         function showCopiedState(button) {
