@@ -7,7 +7,7 @@ import os
 import json
 import uuid
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 DATA_FILE = 'data.json'
@@ -89,6 +89,16 @@ def question_page(question_id):
         return "Вопрос не найден", 404
     
     return render_template('question.html', question_id=question_id)
+
+@app.route('/question.html')
+def static_question_page():
+    """Serve static question.html for GitHub Pages compatibility."""
+    return send_from_directory('.', 'question.html')
+
+@app.route('/questions.json')
+def serve_questions_json():
+    """Serve questions.json for GitHub Pages mode."""
+    return send_from_directory('.', 'questions.json')
 
 @app.route('/api/question/<question_id>', methods=['GET'])
 def get_question(question_id):

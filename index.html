@@ -43,7 +43,20 @@
     </div>
     
     <script>
-        // Initialize localStorage if needed
+        // Check if backend API is available
+        let apiAvailable = true;
+        
+        // Try to detect if we're on GitHub Pages or static hosting
+        async function checkApiAvailability() {
+            try {
+                const response = await fetch('/api/question/test', { method: 'HEAD' });
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // For static hosting (GitHub Pages), use localStorage
         function getQuestions() {
             try {
                 const data = localStorage.getItem('chgk_questions');
@@ -62,41 +75,23 @@
             }
         }
         
-        function getAttempts() {
-            try {
-                const data = localStorage.getItem('chgk_attempts');
-                return data ? JSON.parse(data) : {};
-            } catch (e) {
-                console.error('Failed to parse attempts from localStorage:', e);
-                return {};
-            }
-        }
-        
-        function saveAttempts(attempts) {
-            try {
-                localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
-            } catch (e) {
-                console.error('Failed to save attempts to localStorage:', e);
-            }
-        }
-        
         function generateId() {
             return 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
         }
         
-        document.getElementById('questionForm').addEventListener('submit', (e) => {
+        document.getElementById('questionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const questionText = document.getElementById('question').value.trim();
+            const question = document.getElementById('question').value.trim();
             const answer = document.getElementById('answer').value.trim();
             
-            if (!questionText || !answer) {
+            if (!question || !answer) {
                 alert('Вопрос и ответ обязательны');
                 return;
             }
             
             // Validate input lengths
-            if (questionText.length > 5000) {
+            if (question.length > 5000) {
                 alert('Вопрос слишком длинный (максимум 5000 символов)');
                 return;
             }
@@ -106,25 +101,53 @@
                 return;
             }
             
-            const questionId = generateId();
-            const questions = getQuestions();
-            
-            questions[questionId] = {
-                question: questionText,
-                answer: answer.toLowerCase(),
-                created_at: new Date().toISOString()
-            };
-            
-            saveQuestions(questions);
-            
-            // Generate URL
-            const fullUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'question.html?id=' + questionId;
-            document.getElementById('questionLink').value = fullUrl;
-            document.getElementById('linkCard').style.display = 'block';
-            document.getElementById('questionForm').reset();
-            
-            // Scroll to result
-            document.getElementById('linkCard').scrollIntoView({ behavior: 'smooth' });
+            // Try API first, fallback to localStorage
+            try {
+                const response = await fetch('/api/question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question, answer })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const fullUrl = window.location.origin + data.url;
+                    document.getElementById('questionLink').value = fullUrl;
+                    document.getElementById('linkCard').style.display = 'block';
+                    document.getElementById('questionForm').reset();
+                    
+                    // Scroll to result
+                    document.getElementById('linkCard').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                // API not available, use localStorage (GitHub Pages mode)
+                console.log('API not available, using localStorage');
+                
+                const questionId = generateId();
+                const questions = getQuestions();
+                
+                questions[questionId] = {
+                    question: question,
+                    answer: answer.toLowerCase(),
+                    created_at: new Date().toISOString()
+                };
+                
+                saveQuestions(questions);
+                
+                // Generate URL for GitHub Pages format
+                const fullUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'question.html?id=' + questionId;
+                document.getElementById('questionLink').value = fullUrl;
+                document.getElementById('linkCard').style.display = 'block';
+                document.getElementById('questionForm').reset();
+                
+                // Scroll to result
+                document.getElementById('linkCard').scrollIntoView({ behavior: 'smooth' });
+            }
         });
         
         function copyLink(event) {

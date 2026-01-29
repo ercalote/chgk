@@ -30,13 +30,24 @@
             <div id="resultIcon" class="result-icon"></div>
             <h2 id="resultTitle"></h2>
             <p id="resultMessage"></p>
+            <div id="successImageContainer" style="display: none; margin-top: 20px;">
+                <img id="successImage" alt="Success celebration image" style="max-width: 100%; height: auto; border-radius: 8px;">
+            </div>
         </div>
     </div>
     
     <script>
-        // Get question ID from URL
+        // Get question ID from URL - support both old format (?id=) and new format (/q/)
         const urlParams = new URLSearchParams(window.location.search);
-        const questionId = urlParams.get('id');
+        let questionId = urlParams.get('id');
+        
+        // If no question ID in query params, try to extract from path (for /q/<id> format)
+        if (!questionId) {
+            const pathMatch = window.location.pathname.match(/\/q\/([^\/]+)/);
+            if (pathMatch) {
+                questionId = pathMatch[1];
+            }
+        }
         
         let clientId = localStorage.getItem('clientId');
         
@@ -47,7 +58,8 @@
         
         let timeoutTimer = null;
         
-        function getQuestions() {
+        // localStorage helper functions for GitHub Pages mode
+        function getQuestionsFromLocalStorage() {
             try {
                 const data = localStorage.getItem('chgk_questions');
                 return data ? JSON.parse(data) : {};
@@ -55,6 +67,19 @@
                 console.error('Failed to parse questions from localStorage:', e);
                 return {};
             }
+        }
+        
+        async function loadQuestionsFromFile() {
+            try {
+                const response = await fetch('questions.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.questions || {};
+                }
+            } catch (e) {
+                console.log('Could not load questions.json:', e);
+            }
+            return {};
         }
         
         function getAttempts() {
@@ -75,21 +100,45 @@
             }
         }
         
-        function loadQuestion() {
+        async function loadQuestion() {
             if (!questionId) {
                 document.getElementById('questionText').textContent = 'Ошибка: ID вопроса не указан';
                 return;
             }
             
-            const questions = getQuestions();
+            // Try API first
+            try {
+                const response = await fetch(`/api/question/${questionId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('questionText').textContent = data.question;
+                    document.getElementById('answerForm').style.display = 'block';
+                    return;
+                }
+            } catch (error) {
+                console.log('API not available, trying static questions.json or localStorage');
+            }
             
-            if (!questions[questionId]) {
-                document.getElementById('questionText').textContent = 'Вопрос не найден';
+            // Try loading from questions.json (GitHub Pages with pre-added questions)
+            const fileQuestions = await loadQuestionsFromFile();
+            
+            if (fileQuestions[questionId]) {
+                document.getElementById('questionText').textContent = fileQuestions[questionId].question;
+                document.getElementById('answerForm').style.display = 'block';
                 return;
             }
             
-            document.getElementById('questionText').textContent = questions[questionId].question;
-            document.getElementById('answerForm').style.display = 'block';
+            // Fallback to localStorage (GitHub Pages with dynamically created questions)
+            const localQuestions = getQuestionsFromLocalStorage();
+            
+            if (localQuestions[questionId]) {
+                document.getElementById('questionText').textContent = localQuestions[questionId].question;
+                document.getElementById('answerForm').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('questionText').textContent = 'Вопрос не найден';
         }
         
         function startTimeout(seconds) {
@@ -124,16 +173,95 @@
             updateTimer();
         }
         
-        document.getElementById('submitAnswer').addEventListener('submit', (e) => {
+        document.getElementById('submitAnswer').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const answer = document.getElementById('answerInput').value.trim().toLowerCase();
+            const answer = document.getElementById('answerInput').value.trim();
             
             // Validate non-empty answer
             if (!answer) {
                 return;
             }
-            const questions = getQuestions();
+            
+            // Try API first
+            try {
+                const response = await fetch(`/api/answer/${questionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ answer, client_id: clientId })
+                });
+                
+                const data = await response.json();
+                
+                const resultCard = document.getElementById('resultCard');
+                const resultIcon = document.getElementById('resultIcon');
+                const resultTitle = document.getElementById('resultTitle');
+                const resultMessage = document.getElementById('resultMessage');
+                const successImageContainer = document.getElementById('successImageContainer');
+                const successImage = document.getElementById('successImage');
+                
+                if (data.correct) {
+                    resultCard.className = 'card success-card';
+                    resultIcon.textContent = '🎉';
+                    resultTitle.textContent = 'Поздравляем!';
+                    resultMessage.textContent = data.message;
+                    
+                    // Show success image if available
+                    if (data.success_image) {
+                        successImage.src = data.success_image;
+                        successImageContainer.style.display = 'block';
+                        
+                        // Handle image load errors
+                        successImage.onerror = function() {
+                            successImageContainer.style.display = 'none';
+                        };
+                    } else {
+                        successImageContainer.style.display = 'none';
+                    }
+                    
+                    document.getElementById('answerForm').style.display = 'none';
+                    resultCard.style.display = 'block';
+                } else {
+                    resultCard.className = 'card error-card';
+                    resultIcon.textContent = '❌';
+                    resultTitle.textContent = 'Неправильно';
+                    resultMessage.textContent = data.message;
+                    successImageContainer.style.display = 'none';
+                    
+                    resultCard.style.display = 'block';
+                    
+                    if (data.timeout) {
+                        startTimeout(data.remaining_seconds);
+                    } else {
+                        startTimeout(30);
+                    }
+                    
+                    document.getElementById('answerInput').value = '';
+                    
+                    // Hide result after 3 seconds
+                    setTimeout(() => {
+                        resultCard.style.display = 'none';
+                    }, 3000);
+                }
+                return;
+            } catch (error) {
+                console.log('API not available, using localStorage');
+            }
+            
+            // Fallback to localStorage (GitHub Pages mode)
+            const answerLower = answer.toLowerCase();
+            
+            // Try loading from questions.json first
+            const fileQuestions = await loadQuestionsFromFile();
+            let questions = fileQuestions;
+            
+            // If not found, try localStorage
+            if (!questions[questionId]) {
+                questions = getQuestionsFromLocalStorage();
+            }
+            
             const attempts = getAttempts();
             
             if (!questions[questionId]) {
@@ -175,18 +303,20 @@
             }
             
             const correctAnswer = questions[questionId].answer.toLowerCase();
-            const isCorrect = answer === correctAnswer;
+            const isCorrect = answerLower === correctAnswer;
             
             const resultCard = document.getElementById('resultCard');
             const resultIcon = document.getElementById('resultIcon');
             const resultTitle = document.getElementById('resultTitle');
             const resultMessage = document.getElementById('resultMessage');
+            const successImageContainer = document.getElementById('successImageContainer');
             
             if (isCorrect) {
                 resultCard.className = 'card success-card';
                 resultIcon.textContent = '🎉';
                 resultTitle.textContent = 'Поздравляем!';
                 resultMessage.textContent = 'Ответ правильный!';
+                successImageContainer.style.display = 'none';
                 
                 document.getElementById('answerForm').style.display = 'none';
                 resultCard.style.display = 'block';
@@ -201,6 +331,7 @@
                 resultIcon.textContent = '❌';
                 resultTitle.textContent = 'Неправильно';
                 resultMessage.textContent = 'Неправильный ответ. Попробуйте снова через 30 секунд.';
+                successImageContainer.style.display = 'none';
                 
                 resultCard.style.display = 'block';
                 
