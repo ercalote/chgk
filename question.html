@@ -30,13 +30,24 @@
             <div id="resultIcon" class="result-icon"></div>
             <h2 id="resultTitle"></h2>
             <p id="resultMessage"></p>
+            <div id="successImageContainer" style="display: none; margin-top: 20px;">
+                <img id="successImage" alt="Success celebration image" style="max-width: 100%; height: auto; border-radius: 8px;">
+            </div>
         </div>
     </div>
     
     <script>
-        // Get question ID from URL
+        // Get question ID from URL - support both old format (?id=) and new format (/q/)
         const urlParams = new URLSearchParams(window.location.search);
-        const questionId = urlParams.get('id');
+        let questionId = urlParams.get('id');
+        
+        // If no question ID in query params, try to extract from path (for /q/<id> format)
+        if (!questionId) {
+            const pathMatch = window.location.pathname.match(/\/q\/([^\/]+)/);
+            if (pathMatch) {
+                questionId = pathMatch[1];
+            }
+        }
         
         let clientId = localStorage.getItem('clientId');
         
@@ -47,49 +58,25 @@
         
         let timeoutTimer = null;
         
-        function getQuestions() {
-            try {
-                const data = localStorage.getItem('chgk_questions');
-                return data ? JSON.parse(data) : {};
-            } catch (e) {
-                console.error('Failed to parse questions from localStorage:', e);
-                return {};
-            }
-        }
-        
-        function getAttempts() {
-            try {
-                const data = localStorage.getItem('chgk_attempts');
-                return data ? JSON.parse(data) : {};
-            } catch (e) {
-                console.error('Failed to parse attempts from localStorage:', e);
-                return {};
-            }
-        }
-        
-        function saveAttempts(attempts) {
-            try {
-                localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
-            } catch (e) {
-                console.error('Failed to save attempts to localStorage:', e);
-            }
-        }
-        
-        function loadQuestion() {
+        async function loadQuestion() {
             if (!questionId) {
                 document.getElementById('questionText').textContent = 'Ошибка: ID вопроса не указан';
                 return;
             }
             
-            const questions = getQuestions();
-            
-            if (!questions[questionId]) {
-                document.getElementById('questionText').textContent = 'Вопрос не найден';
-                return;
+            try {
+                const response = await fetch(`/api/question/${questionId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('questionText').textContent = data.question;
+                    document.getElementById('answerForm').style.display = 'block';
+                } else {
+                    document.getElementById('questionText').textContent = 'Ошибка: ' + data.error;
+                }
+            } catch (error) {
+                document.getElementById('questionText').textContent = 'Ошибка загрузки вопроса: ' + error.message;
             }
-            
-            document.getElementById('questionText').textContent = questions[questionId].question;
-            document.getElementById('answerForm').style.display = 'block';
         }
         
         function startTimeout(seconds) {
@@ -124,98 +111,79 @@
             updateTimer();
         }
         
-        document.getElementById('submitAnswer').addEventListener('submit', (e) => {
+        document.getElementById('submitAnswer').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const answer = document.getElementById('answerInput').value.trim().toLowerCase();
+            const answer = document.getElementById('answerInput').value.trim();
             
             // Validate non-empty answer
             if (!answer) {
                 return;
             }
-            const questions = getQuestions();
-            const attempts = getAttempts();
             
-            if (!questions[questionId]) {
-                alert('Вопрос не найден');
-                return;
-            }
-            
-            // Check for timeout
-            const attemptKey = `${questionId}:${clientId}`;
-            
-            if (attempts[attemptKey]) {
-                const lastAttempt = new Date(attempts[attemptKey]);
-                const now = new Date();
-                const timeSince = (now - lastAttempt) / 1000; // seconds
+            try {
+                const response = await fetch(`/api/answer/${questionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ answer, client_id: clientId })
+                });
                 
-                if (timeSince < 30) {
-                    const remaining = Math.ceil(30 - timeSince);
+                const data = await response.json();
+                
+                const resultCard = document.getElementById('resultCard');
+                const resultIcon = document.getElementById('resultIcon');
+                const resultTitle = document.getElementById('resultTitle');
+                const resultMessage = document.getElementById('resultMessage');
+                const successImageContainer = document.getElementById('successImageContainer');
+                const successImage = document.getElementById('successImage');
+                
+                if (data.correct) {
+                    resultCard.className = 'card success-card';
+                    resultIcon.textContent = '🎉';
+                    resultTitle.textContent = 'Поздравляем!';
+                    resultMessage.textContent = data.message;
                     
-                    const resultCard = document.getElementById('resultCard');
-                    const resultIcon = document.getElementById('resultIcon');
-                    const resultTitle = document.getElementById('resultTitle');
-                    const resultMessage = document.getElementById('resultMessage');
+                    // Show success image if available
+                    if (data.success_image) {
+                        successImage.src = data.success_image;
+                        successImageContainer.style.display = 'block';
+                        
+                        // Handle image load errors
+                        successImage.onerror = function() {
+                            successImageContainer.style.display = 'none';
+                        };
+                    } else {
+                        successImageContainer.style.display = 'none';
+                    }
                     
+                    document.getElementById('answerForm').style.display = 'none';
+                    resultCard.style.display = 'block';
+                } else {
                     resultCard.className = 'card error-card';
-                    resultIcon.textContent = '⏱️';
-                    resultTitle.textContent = 'Подождите';
-                    resultMessage.textContent = `Подождите ${remaining} секунд перед следующей попыткой`;
+                    resultIcon.textContent = '❌';
+                    resultTitle.textContent = 'Неправильно';
+                    resultMessage.textContent = data.message;
+                    successImageContainer.style.display = 'none';
+                    
                     resultCard.style.display = 'block';
                     
-                    startTimeout(remaining);
+                    if (data.timeout) {
+                        startTimeout(data.remaining_seconds);
+                    } else {
+                        startTimeout(30);
+                    }
+                    
+                    document.getElementById('answerInput').value = '';
                     
                     // Hide result after 3 seconds
                     setTimeout(() => {
                         resultCard.style.display = 'none';
                     }, 3000);
-                    
-                    return;
                 }
-            }
-            
-            const correctAnswer = questions[questionId].answer.toLowerCase();
-            const isCorrect = answer === correctAnswer;
-            
-            const resultCard = document.getElementById('resultCard');
-            const resultIcon = document.getElementById('resultIcon');
-            const resultTitle = document.getElementById('resultTitle');
-            const resultMessage = document.getElementById('resultMessage');
-            
-            if (isCorrect) {
-                resultCard.className = 'card success-card';
-                resultIcon.textContent = '🎉';
-                resultTitle.textContent = 'Поздравляем!';
-                resultMessage.textContent = 'Ответ правильный!';
-                
-                document.getElementById('answerForm').style.display = 'none';
-                resultCard.style.display = 'block';
-                
-                // Clear the attempt record
-                if (attempts[attemptKey]) {
-                    delete attempts[attemptKey];
-                    saveAttempts(attempts);
-                }
-            } else {
-                resultCard.className = 'card error-card';
-                resultIcon.textContent = '❌';
-                resultTitle.textContent = 'Неправильно';
-                resultMessage.textContent = 'Неправильный ответ. Попробуйте снова через 30 секунд.';
-                
-                resultCard.style.display = 'block';
-                
-                // Record failed attempt
-                attempts[attemptKey] = new Date().toISOString();
-                saveAttempts(attempts);
-                
-                startTimeout(30);
-                
-                document.getElementById('answerInput').value = '';
-                
-                // Hide result after 3 seconds
-                setTimeout(() => {
-                    resultCard.style.display = 'none';
-                }, 3000);
+            } catch (error) {
+                alert('Ошибка при отправке ответа: ' + error.message);
             }
         });
         
