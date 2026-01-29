@@ -26,6 +26,12 @@
                     <small>Ответы не чувствительны к регистру</small>
                 </div>
                 
+                <div class="form-group">
+                    <label for="successImage">URL изображения для правильного ответа (необязательно):</label>
+                    <input type="url" id="successImage" name="successImage" placeholder="https://example.com/image.jpg">
+                    <small>Изображение будет показано при правильном ответе</small>
+                </div>
+                
                 <button type="submit" class="btn-primary">Создать вопрос</button>
             </form>
         </div>
@@ -48,6 +54,7 @@
             
             const question = document.getElementById('question').value;
             const answer = document.getElementById('answer').value;
+            const success_image = document.getElementById('successImage').value;
             
             try {
                 const response = await fetch('/api/question', {
@@ -55,7 +62,7 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ question, answer })
+                    body: JSON.stringify({ question, answer, success_image })
                 });
                 
                 const data = await response.json();

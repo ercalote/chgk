@@ -85,6 +85,7 @@ label {
 }
 
 input[type="text"],
+input[type="url"],
 textarea {
     width: 100%;
     padding: 15px;
@@ -96,6 +97,7 @@ textarea {
 }
 
 input[type="text"]:focus,
+input[type="url"]:focus,
 textarea:focus {
     outline: none;
     border-color: #ffd700;
@@ -241,6 +243,7 @@ small {
     }
     
     input[type="text"],
+    input[type="url"],
     textarea {
         font-size: 16px; /* Prevent zoom on iOS */
     }
@@ -256,4 +259,16 @@ small {
     .btn-secondary:active {
         transform: scale(0.98);
     }
+}
+
+/* Success image styling */
+#successImageContainer {
+    margin-top: 20px;
+}
+
+#successImage {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
