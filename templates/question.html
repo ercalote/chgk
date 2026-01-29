@@ -30,6 +30,9 @@
             <div id="resultIcon" class="result-icon"></div>
             <h2 id="resultTitle"></h2>
             <p id="resultMessage"></p>
+            <div id="successImageContainer" style="display: none;">
+                <img id="successImage" alt="Success" style="max-width: 100%; height: auto; margin-top: 20px; border-radius: 10px;">
+            </div>
         </div>
     </div>
     
@@ -112,12 +115,22 @@
                 const resultIcon = document.getElementById('resultIcon');
                 const resultTitle = document.getElementById('resultTitle');
                 const resultMessage = document.getElementById('resultMessage');
+                const successImageContainer = document.getElementById('successImageContainer');
+                const successImage = document.getElementById('successImage');
                 
                 if (data.correct) {
                     resultCard.className = 'card success-card';
                     resultIcon.textContent = '🎉';
                     resultTitle.textContent = 'Поздравляем!';
                     resultMessage.textContent = data.message;
+                    
+                    // Show success image if available
+                    if (data.success_image) {
+                        successImage.src = data.success_image;
+                        successImageContainer.style.display = 'block';
+                    } else {
+                        successImageContainer.style.display = 'none';
+                    }
                     
                     document.getElementById('answerForm').style.display = 'none';
                     resultCard.style.display = 'block';
@@ -126,6 +139,7 @@
                     resultIcon.textContent = '❌';
                     resultTitle.textContent = 'Неправильно';
                     resultMessage.textContent = data.message;
+                    successImageContainer.style.display = 'none';
                     
                     resultCard.style.display = 'block';
                     

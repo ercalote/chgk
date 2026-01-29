@@ -42,6 +42,7 @@ def create_question():
     
     question_text = request.json.get('question', '').strip()
     answer = request.json.get('answer', '').strip()
+    success_image = request.json.get('success_image', '').strip()
     
     if not question_text or not answer:
         return jsonify({'error': 'Вопрос и ответ обязательны'}), 400
@@ -53,12 +54,19 @@ def create_question():
     if len(answer) > 500:
         return jsonify({'error': 'Ответ слишком длинный (максимум 500 символов)'}), 400
     
+    if success_image and len(success_image) > 2000:
+        return jsonify({'error': 'URL изображения слишком длинный (максимум 2000 символов)'}), 400
+    
     question_id = str(uuid.uuid4())
     data_obj['questions'][question_id] = {
         'question': question_text,
         'answer': answer.lower(),
         'created_at': datetime.now().isoformat()
     }
+    
+    # Add success_image only if provided
+    if success_image:
+        data_obj['questions'][question_id]['success_image'] = success_image
     
     save_data(data_obj)
     
@@ -141,10 +149,17 @@ def check_answer(question_id):
         del data_obj['attempts'][attempt_key]
         save_data(data_obj)
     
-    return jsonify({
+    response_data = {
         'correct': True,
         'message': 'Поздравляем! Ответ правильный!'
-    })
+    }
+    
+    # Include success image if available
+    question_data = data_obj['questions'][question_id]
+    if 'success_image' in question_data:
+        response_data['success_image'] = question_data['success_image']
+    
+    return jsonify(response_data)
 
 if __name__ == '__main__':
     # Get debug mode from environment variable, default to False for production
