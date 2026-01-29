@@ -79,9 +79,39 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
-### В облаке
+### Автоматическое развертывание в Azure (CI/CD)
 
-Приложение совместимо с различными платформами:
+Проект настроен для автоматического развертывания в Azure Web App через GitHub Actions.
+
+#### Настройка CI/CD пайплайна
+
+1. **Создайте Azure Web App**:
+   - Перейдите в Azure Portal
+   - Создайте новый Web App с Python 3.9 runtime
+   - Скачайте publish profile из настроек развертывания
+
+2. **Настройте GitHub Secrets**:
+   - Перейдите в Settings → Secrets and variables → Actions в вашем репозитории
+   - Добавьте следующие secrets:
+     - `AZURE_WEBAPP_NAME`: имя вашего Azure Web App
+     - `AZURE_WEBAPP_PUBLISH_PROFILE`: содержимое publish profile файла
+
+3. **Запуск деплоя**:
+   - Пайплайн автоматически запускается при каждом push в ветку `mainline`
+   - Процесс включает:
+     - Загрузку кода репозитория
+     - Установку Python 3.9
+     - Установку зависимостей из `requirements.txt`
+     - Автоматическое развертывание в Azure Web App
+
+#### Мониторинг деплоя
+
+- Статус деплоя можно отслеживать во вкладке Actions репозитория
+- Azure Web App логи доступны в Azure Portal
+
+### В облаке (альтернативные платформы)
+
+Приложение также совместимо с различными платформами:
 
 - **Heroku**: Используйте Procfile
 - **PythonAnywhere**: Загрузите файлы и настройте веб-приложение Flask
