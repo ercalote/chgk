@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вопрос - Что? Где? Когда?</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ЧГК</div>
+        <h1>Что? Где? Когда?</h1>
+        
+        <div class="card question-card">
+            <div id="questionText" class="question-text">Загрузка вопроса...</div>
+        </div>
+        
+        <div id="answerForm" class="card" style="display: none;">
+            <h2>Ваш ответ:</h2>
+            <form id="submitAnswer">
+                <div class="form-group">
+                    <input type="text" id="answerInput" name="answer" placeholder="Введите ответ..." required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary" id="submitBtn">Ответить</button>
+            </form>
+            <div id="timer" class="timer" style="display: none;"></div>
+        </div>
+        
+        <div id="resultCard" class="card" style="display: none;">
+            <div id="resultIcon" class="result-icon"></div>
+            <h2 id="resultTitle"></h2>
+            <p id="resultMessage"></p>
+        </div>
+    </div>
+    
+    <script>
+        const questionId = '{{ question_id }}';
+        let clientId = localStorage.getItem('clientId');
+        
+        if (!clientId) {
+            clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('clientId', clientId);
+        }
+        
+        let timeoutTimer = null;
+        
+        async function loadQuestion() {
+            try {
+                const response = await fetch(`/api/question/${questionId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('questionText').textContent = data.question;
+                    document.getElementById('answerForm').style.display = 'block';
+                } else {
+                    document.getElementById('questionText').textContent = 'Ошибка: ' + data.error;
+                }
+            } catch (error) {
+                document.getElementById('questionText').textContent = 'Ошибка загрузки вопроса';
+            }
+        }
+        
+        function startTimeout(seconds) {
+            const submitBtn = document.getElementById('submitBtn');
+            const answerInput = document.getElementById('answerInput');
+            const timerDiv = document.getElementById('timer');
+            
+            submitBtn.disabled = true;
+            answerInput.disabled = true;
+            timerDiv.style.display = 'block';
+            
+            let remaining = seconds;
+            
+            function updateTimer() {
+                if (remaining > 0) {
+                    timerDiv.textContent = `Следующая попытка через: ${remaining} сек`;
+                    remaining--;
+                    timeoutTimer = setTimeout(updateTimer, 1000);
+                } else {
+                    timerDiv.style.display = 'none';
+                    submitBtn.disabled = false;
+                    answerInput.disabled = false;
+                    answerInput.focus();
+                }
+            }
+            
+            updateTimer();
+        }
+        
+        document.getElementById('submitAnswer').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const answer = document.getElementById('answerInput').value;
+            
+            try {
+                const response = await fetch(`/api/answer/${questionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ answer, client_id: clientId })
+                });
+                
+                const data = await response.json();
+                
+                const resultCard = document.getElementById('resultCard');
+                const resultIcon = document.getElementById('resultIcon');
+                const resultTitle = document.getElementById('resultTitle');
+                const resultMessage = document.getElementById('resultMessage');
+                
+                if (data.correct) {
+                    resultCard.className = 'card success-card';
+                    resultIcon.textContent = '🎉';
+                    resultTitle.textContent = 'Поздравляем!';
+                    resultMessage.textContent = data.message;
+                    
+                    document.getElementById('answerForm').style.display = 'none';
+                    resultCard.style.display = 'block';
+                } else {
+                    resultCard.className = 'card error-card';
+                    resultIcon.textContent = '❌';
+                    resultTitle.textContent = 'Неправильно';
+                    resultMessage.textContent = data.message;
+                    
+                    resultCard.style.display = 'block';
+                    
+                    if (data.timeout) {
+                        startTimeout(data.remaining_seconds);
+                    } else {
+                        startTimeout(30);
+                    }
+                    
+                    document.getElementById('answerInput').value = '';
+                    
+                    // Hide result after 3 seconds
+                    setTimeout(() => {
+                        resultCard.style.display = 'none';
+                    }, 3000);
+                }
+            } catch (error) {
+                alert('Ошибка при отправке ответа: ' + error.message);
+            }
+        });
+        
+        // Load question on page load
+        loadQuestion();
+    </script>
+</body>
+</html>

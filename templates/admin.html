@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Что? Где? Когда?</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ЧГК</div>
+        <h1>Админ панель</h1>
+        <p class="subtitle">Что? Где? Когда?</p>
+        
+        <div class="card">
+            <h2>Создать новый вопрос</h2>
+            <form id="questionForm">
+                <div class="form-group">
+                    <label for="question">Вопрос:</label>
+                    <textarea id="question" name="question" rows="5" placeholder="Введите вопрос..." required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="answer">Правильный ответ:</label>
+                    <input type="text" id="answer" name="answer" placeholder="Введите ответ..." required>
+                    <small>Ответы не чувствительны к регистру</small>
+                </div>
+                
+                <button type="submit" class="btn-primary">Создать вопрос</button>
+            </form>
+        </div>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div id="linkCard" class="card success-card" style="display: none;">
+            <h2>✓ Вопрос создан!</h2>
+            <p>Уникальная ссылка на вопрос:</p>
+            <div class="link-box">
+                <input type="text" id="questionLink" readonly>
+                <button onclick="copyLink()" class="btn-secondary">Копировать</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('questionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const question = document.getElementById('question').value;
+            const answer = document.getElementById('answer').value;
+            
+            try {
+                const response = await fetch('/api/question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question, answer })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const fullUrl = window.location.origin + data.url;
+                    document.getElementById('questionLink').value = fullUrl;
+                    document.getElementById('linkCard').style.display = 'block';
+                    document.getElementById('questionForm').reset();
+                    
+                    // Scroll to result
+                    document.getElementById('linkCard').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('Ошибка при создании вопроса: ' + error.message);
+            }
+        });
+        
+        function copyLink() {
+            const linkInput = document.getElementById('questionLink');
+            linkInput.select();
+            document.execCommand('copy');
+            
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Скопировано!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
