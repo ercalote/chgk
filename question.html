@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вопрос - Что? Где? Когда?</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ЧГК</div>
+        <h1>Что? Где? Когда?</h1>
+        
+        <div class="card question-card">
+            <div id="questionText" class="question-text">Загрузка вопроса...</div>
+        </div>
+        
+        <div id="answerForm" class="card" style="display: none;">
+            <h2>Ваш ответ:</h2>
+            <form id="submitAnswer">
+                <div class="form-group">
+                    <input type="text" id="answerInput" name="answer" placeholder="Введите ответ..." required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary" id="submitBtn">Ответить</button>
+            </form>
+            <div id="timer" class="timer" style="display: none;"></div>
+        </div>
+        
+        <div id="resultCard" class="card" style="display: none;">
+            <div id="resultIcon" class="result-icon"></div>
+            <h2 id="resultTitle"></h2>
+            <p id="resultMessage"></p>
+        </div>
+    </div>
+    
+    <script>
+        // Get question ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const questionId = urlParams.get('id');
+        
+        let clientId = localStorage.getItem('clientId');
+        
+        if (!clientId) {
+            clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+            localStorage.setItem('clientId', clientId);
+        }
+        
+        let timeoutTimer = null;
+        
+        function getQuestions() {
+            try {
+                const data = localStorage.getItem('chgk_questions');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse questions from localStorage:', e);
+                return {};
+            }
+        }
+        
+        function getAttempts() {
+            try {
+                const data = localStorage.getItem('chgk_attempts');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse attempts from localStorage:', e);
+                return {};
+            }
+        }
+        
+        function saveAttempts(attempts) {
+            try {
+                localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+            } catch (e) {
+                console.error('Failed to save attempts to localStorage:', e);
+            }
+        }
+        
+        function loadQuestion() {
+            if (!questionId) {
+                document.getElementById('questionText').textContent = 'Ошибка: ID вопроса не указан';
+                return;
+            }
+            
+            const questions = getQuestions();
+            
+            if (!questions[questionId]) {
+                document.getElementById('questionText').textContent = 'Вопрос не найден';
+                return;
+            }
+            
+            document.getElementById('questionText').textContent = questions[questionId].question;
+            document.getElementById('answerForm').style.display = 'block';
+        }
+        
+        function startTimeout(seconds) {
+            // Clear any existing timeout
+            if (timeoutTimer) {
+                clearTimeout(timeoutTimer);
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const answerInput = document.getElementById('answerInput');
+            const timerDiv = document.getElementById('timer');
+            
+            submitBtn.disabled = true;
+            answerInput.disabled = true;
+            timerDiv.style.display = 'block';
+            
+            let remaining = seconds;
+            
+            function updateTimer() {
+                if (remaining > 0) {
+                    timerDiv.textContent = `Следующая попытка через: ${remaining} сек`;
+                    remaining--;
+                    timeoutTimer = setTimeout(updateTimer, 1000);
+                } else {
+                    timerDiv.style.display = 'none';
+                    submitBtn.disabled = false;
+                    answerInput.disabled = false;
+                    answerInput.focus();
+                }
+            }
+            
+            updateTimer();
+        }
+        
+        document.getElementById('submitAnswer').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const answer = document.getElementById('answerInput').value.trim().toLowerCase();
+            
+            // Validate non-empty answer
+            if (!answer) {
+                return;
+            }
+            const questions = getQuestions();
+            const attempts = getAttempts();
+            
+            if (!questions[questionId]) {
+                alert('Вопрос не найден');
+                return;
+            }
+            
+            // Check for timeout
+            const attemptKey = `${questionId}:${clientId}`;
+            
+            if (attempts[attemptKey]) {
+                const lastAttempt = new Date(attempts[attemptKey]);
+                const now = new Date();
+                const timeSince = (now - lastAttempt) / 1000; // seconds
+                
+                if (timeSince < 30) {
+                    const remaining = Math.ceil(30 - timeSince);
+                    
+                    const resultCard = document.getElementById('resultCard');
+                    const resultIcon = document.getElementById('resultIcon');
+                    const resultTitle = document.getElementById('resultTitle');
+                    const resultMessage = document.getElementById('resultMessage');
+                    
+                    resultCard.className = 'card error-card';
+                    resultIcon.textContent = '⏱️';
+                    resultTitle.textContent = 'Подождите';
+                    resultMessage.textContent = `Подождите ${remaining} секунд перед следующей попыткой`;
+                    resultCard.style.display = 'block';
+                    
+                    startTimeout(remaining);
+                    
+                    // Hide result after 3 seconds
+                    setTimeout(() => {
+                        resultCard.style.display = 'none';
+                    }, 3000);
+                    
+                    return;
+                }
+            }
+            
+            const correctAnswer = questions[questionId].answer.toLowerCase();
+            const isCorrect = answer === correctAnswer;
+            
+            const resultCard = document.getElementById('resultCard');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMessage = document.getElementById('resultMessage');
+            
+            if (isCorrect) {
+                resultCard.className = 'card success-card';
+                resultIcon.textContent = '🎉';
+                resultTitle.textContent = 'Поздравляем!';
+                resultMessage.textContent = 'Ответ правильный!';
+                
+                document.getElementById('answerForm').style.display = 'none';
+                resultCard.style.display = 'block';
+                
+                // Clear the attempt record
+                if (attempts[attemptKey]) {
+                    delete attempts[attemptKey];
+                    saveAttempts(attempts);
+                }
+            } else {
+                resultCard.className = 'card error-card';
+                resultIcon.textContent = '❌';
+                resultTitle.textContent = 'Неправильно';
+                resultMessage.textContent = 'Неправильный ответ. Попробуйте снова через 30 секунд.';
+                
+                resultCard.style.display = 'block';
+                
+                // Record failed attempt
+                attempts[attemptKey] = new Date().toISOString();
+                saveAttempts(attempts);
+                
+                startTimeout(30);
+                
+                document.getElementById('answerInput').value = '';
+                
+                // Hide result after 3 seconds
+                setTimeout(() => {
+                    resultCard.style.display = 'none';
+                }, 3000);
+            }
+        });
+        
+        // Load question on page load
+        loadQuestion();
+    </script>
+</body>
+</html>
