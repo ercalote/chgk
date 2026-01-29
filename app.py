@@ -6,6 +6,7 @@ No database required - uses JSON file for storage.
 import os
 import json
 import uuid
+import hashlib
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
@@ -29,6 +30,11 @@ def save_data(data):
     """Save questions and attempt data to JSON file."""
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def generate_question_id(question_text):
+    """Generate MD5 hash-based ID from question text."""
+    # Use MD5 hash of the question text as the unique ID
+    return hashlib.md5(question_text.encode('utf-8')).hexdigest()
 
 @app.route('/')
 def index():
@@ -62,7 +68,13 @@ def create_question():
         if not (success_image.startswith('http://') or success_image.startswith('https://')):
             return jsonify({'error': 'URL изображения должен начинаться с http:// или https://'}), 400
     
-    question_id = str(uuid.uuid4())
+    # Generate hash-based ID from question text
+    question_id = generate_question_id(question_text)
+    
+    # Check if question already exists (hash collision or duplicate)
+    if question_id in data_obj['questions']:
+        return jsonify({'error': 'Вопрос с таким текстом уже существует', 'id': question_id}), 409
+    
     data_obj['questions'][question_id] = {
         'question': question_text,
         'answer': answer.lower(),
@@ -95,6 +107,11 @@ def static_question_page():
     """Serve static question.html for GitHub Pages compatibility."""
     return send_from_directory('.', 'question.html')
 
+@app.route('/questions.html')
+def questions_list_page():
+    """Serve questions list page."""
+    return send_from_directory('.', 'questions.html')
+
 @app.route('/questions.json')
 def serve_questions_json():
     """Serve questions.json for GitHub Pages mode."""
@@ -111,6 +128,28 @@ def get_question(question_id):
     question_data = data_obj['questions'][question_id]
     return jsonify({
         'question': question_data['question']
+    })
+
+@app.route('/api/questions', methods=['GET'])
+def list_questions():
+    """List all available questions with their URLs."""
+    data_obj = load_data()
+    
+    questions_list = []
+    for question_id, question_data in data_obj['questions'].items():
+        questions_list.append({
+            'id': question_id,
+            'question': question_data['question'],
+            'url': f'/q/{question_id}',
+            'created_at': question_data.get('created_at', '')
+        })
+    
+    # Sort by creation date (newest first)
+    questions_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    
+    return jsonify({
+        'questions': questions_list,
+        'total': len(questions_list)
     })
 
 @app.route('/api/answer/<question_id>', methods=['POST'])

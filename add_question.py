@@ -5,6 +5,7 @@ Usage: python add_question.py
 """
 import json
 import os
+import hashlib
 from datetime import datetime
 
 QUESTIONS_FILE = 'questions.json'
@@ -22,14 +23,8 @@ def save_questions(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def generate_id(question_text):
-    """Generate a readable ID from question text."""
-    # Take first few words and make them URL-friendly
-    words = question_text.lower().split()[:3]
-    base_id = '_'.join(''.join(c for c in word if c.isalnum()) for word in words)
-    
-    # Add timestamp to ensure uniqueness
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    return f"{base_id}_{timestamp}"
+    """Generate MD5 hash-based ID from question text."""
+    return hashlib.md5(question_text.encode('utf-8')).hexdigest()
 
 def main():
     print("=== Добавление вопроса в questions.json ===\n")
@@ -46,10 +41,10 @@ def main():
         return
     
     # Generate ID
-    question_id = input("Введите ID вопроса (или нажмите Enter для автогенерации): ").strip()
+    question_id = input("Введите ID вопроса (или нажмите Enter для автогенерации на основе MD5): ").strip()
     if not question_id:
         question_id = generate_id(question)
-        print(f"Сгенерирован ID: {question_id}")
+        print(f"Сгенерирован MD5 ID: {question_id}")
     
     # Load existing data
     data = load_questions()
