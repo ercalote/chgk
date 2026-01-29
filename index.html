@@ -45,25 +45,43 @@
     <script>
         // Initialize localStorage if needed
         function getQuestions() {
-            const data = localStorage.getItem('chgk_questions');
-            return data ? JSON.parse(data) : {};
+            try {
+                const data = localStorage.getItem('chgk_questions');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse questions from localStorage:', e);
+                return {};
+            }
         }
         
         function saveQuestions(questions) {
-            localStorage.setItem('chgk_questions', JSON.stringify(questions));
+            try {
+                localStorage.setItem('chgk_questions', JSON.stringify(questions));
+            } catch (e) {
+                console.error('Failed to save questions to localStorage:', e);
+            }
         }
         
         function getAttempts() {
-            const data = localStorage.getItem('chgk_attempts');
-            return data ? JSON.parse(data) : {};
+            try {
+                const data = localStorage.getItem('chgk_attempts');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse attempts from localStorage:', e);
+                return {};
+            }
         }
         
         function saveAttempts(attempts) {
-            localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+            try {
+                localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+            } catch (e) {
+                console.error('Failed to save attempts to localStorage:', e);
+            }
         }
         
         function generateId() {
-            return 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            return 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
         }
         
         document.getElementById('questionForm').addEventListener('submit', (e) => {

@@ -41,24 +41,38 @@
         let clientId = localStorage.getItem('clientId');
         
         if (!clientId) {
-            clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
             localStorage.setItem('clientId', clientId);
         }
         
         let timeoutTimer = null;
         
         function getQuestions() {
-            const data = localStorage.getItem('chgk_questions');
-            return data ? JSON.parse(data) : {};
+            try {
+                const data = localStorage.getItem('chgk_questions');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse questions from localStorage:', e);
+                return {};
+            }
         }
         
         function getAttempts() {
-            const data = localStorage.getItem('chgk_attempts');
-            return data ? JSON.parse(data) : {};
+            try {
+                const data = localStorage.getItem('chgk_attempts');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Failed to parse attempts from localStorage:', e);
+                return {};
+            }
         }
         
         function saveAttempts(attempts) {
-            localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+            try {
+                localStorage.setItem('chgk_attempts', JSON.stringify(attempts));
+            } catch (e) {
+                console.error('Failed to save attempts to localStorage:', e);
+            }
         }
         
         function loadQuestion() {
@@ -114,6 +128,11 @@
             e.preventDefault();
             
             const answer = document.getElementById('answerInput').value.trim().toLowerCase();
+            
+            // Validate non-empty answer
+            if (!answer) {
+                return;
+            }
             const questions = getQuestions();
             const attempts = getAttempts();
             
@@ -155,7 +174,7 @@
                 }
             }
             
-            const correctAnswer = questions[questionId].answer;
+            const correctAnswer = questions[questionId].answer.toLowerCase();
             const isCorrect = answer === correctAnswer;
             
             const resultCard = document.getElementById('resultCard');
