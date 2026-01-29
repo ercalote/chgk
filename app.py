@@ -5,7 +5,6 @@ No database required - uses JSON file for storage.
 """
 import os
 import json
-import time
 import uuid
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
@@ -16,8 +15,14 @@ DATA_FILE = 'data.json'
 def load_data():
     """Load questions and attempt data from JSON file."""
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            # If JSON is corrupted, backup and start fresh
+            if os.path.exists(DATA_FILE):
+                os.rename(DATA_FILE, f'{DATA_FILE}.corrupt.{int(datetime.now().timestamp())}')
+            return {'questions': {}, 'attempts': {}}
     return {'questions': {}, 'attempts': {}}
 
 def save_data(data):
@@ -35,16 +40,23 @@ def create_question():
     """Create a new question with a unique ID."""
     data_obj = load_data()
     
-    question_text = request.json.get('question')
-    answer = request.json.get('answer')
+    question_text = request.json.get('question', '').strip()
+    answer = request.json.get('answer', '').strip()
     
     if not question_text or not answer:
         return jsonify({'error': 'Вопрос и ответ обязательны'}), 400
     
+    # Validate input lengths
+    if len(question_text) > 5000:
+        return jsonify({'error': 'Вопрос слишком длинный (максимум 5000 символов)'}), 400
+    
+    if len(answer) > 500:
+        return jsonify({'error': 'Ответ слишком длинный (максимум 500 символов)'}), 400
+    
     question_id = str(uuid.uuid4())
     data_obj['questions'][question_id] = {
         'question': question_text,
-        'answer': answer.strip().lower(),
+        'answer': answer.lower(),
         'created_at': datetime.now().isoformat()
     }
     
@@ -90,7 +102,7 @@ def check_answer(question_id):
     client_id = request.json.get('client_id', '')
     
     if not client_id:
-        return jsonify({'error': 'Client ID required'}), 400
+        return jsonify({'error': 'Требуется идентификатор клиента'}), 400
     
     # Check for timeout
     attempt_key = f"{question_id}:{client_id}"
@@ -135,4 +147,6 @@ def check_answer(question_id):
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Get debug mode from environment variable, default to False for production
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)

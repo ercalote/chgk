@@ -37,7 +37,7 @@
             <p>Уникальная ссылка на вопрос:</p>
             <div class="link-box">
                 <input type="text" id="questionLink" readonly>
-                <button onclick="copyLink()" class="btn-secondary">Копировать</button>
+                <button onclick="copyLink(event)" class="btn-secondary">Копировать</button>
             </div>
         </div>
     </div>
@@ -76,10 +76,17 @@
             }
         });
         
-        function copyLink() {
+        function copyLink(event) {
             const linkInput = document.getElementById('questionLink');
             linkInput.select();
-            document.execCommand('copy');
+            
+            // Use modern Clipboard API with fallback
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(linkInput.value);
+            } else {
+                // Fallback for older browsers
+                document.execCommand('copy');
+            }
             
             const btn = event.target;
             const originalText = btn.textContent;

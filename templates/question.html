@@ -61,6 +61,11 @@
         }
         
         function startTimeout(seconds) {
+            // Clear any existing timeout
+            if (timeoutTimer) {
+                clearTimeout(timeoutTimer);
+            }
+            
             const submitBtn = document.getElementById('submitBtn');
             const answerInput = document.getElementById('answerInput');
             const timerDiv = document.getElementById('timer');
