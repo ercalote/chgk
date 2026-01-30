@@ -15,7 +15,7 @@ def load_questions():
     if os.path.exists(QUESTIONS_FILE):
         with open(QUESTIONS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
-    return {'questions': {}}
+    return []
 
 def save_questions(data):
     """Save questions to file."""
@@ -50,18 +50,23 @@ def main():
     data = load_questions()
     
     # Check if ID already exists
-    if question_id in data['questions']:
+    existing_question = next((q for q in data if q.get('id') == question_id), None)
+    if existing_question:
         overwrite = input(f"Вопрос с ID '{question_id}' уже существует. Перезаписать? (y/n): ")
         if overwrite.lower() != 'y':
             print("Отменено")
             return
+        # Remove the existing question
+        data = [q for q in data if q.get('id') != question_id]
     
     # Add question
-    data['questions'][question_id] = {
+    new_question = {
+        'id': question_id,
         'question': question,
         'answer': answer.lower(),
         'created_at': datetime.now().isoformat()
     }
+    data.append(new_question)
     
     # Save
     save_questions(data)
