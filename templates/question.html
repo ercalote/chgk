@@ -126,8 +126,15 @@
                     
                     // Show success image if available
                     if (data.success_image) {
+                        // Reset image state
+                        successImage.style.display = '';
                         successImage.src = data.success_image;
                         successImageContainer.style.display = 'block';
+                        
+                        // Handle image load success
+                        successImage.onload = function() {
+                            successImageContainer.style.display = 'block';
+                        };
                         
                         // Handle image load errors
                         successImage.onerror = function() {
