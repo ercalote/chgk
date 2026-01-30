@@ -71,7 +71,7 @@
         
         async function loadQuestionsFromFile() {
             try {
-                const response = await fetch('questions.json');
+                const response = await fetch('./questions.json');
                 if (response.ok) {
                     const data = await response.json();
                     // Convert array to object for backward compatibility
