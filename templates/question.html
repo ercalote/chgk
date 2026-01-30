@@ -17,7 +17,7 @@
         
         <div id="hintCard" class="card" style="display: none;">
             <div id="hintPurchase" style="display: none;">
-                <p>💡 За 1 золотую монету 🪙 вы можете купить подсказку!</p>
+                <p>💰 За 1 золотую монету можно купить подсказку!</p>
             </div>
             <div id="hintContent" style="display: none;">
                 <h3>Подсказка:</h3>
@@ -26,10 +26,10 @@
         </div>
         
         <div id="answerForm" class="card" style="display: none;">
-            <h2>Ваш ответ:</h2>
+            <h2>Твой ответ:</h2>
             <form id="submitAnswer">
                 <div class="form-group">
-                    <input type="text" id="answerInput" name="answer" placeholder="Введите ответ..." required autocomplete="off">
+                    <input type="text" id="answerInput" name="answer" placeholder="Введи ответ..." required autocomplete="off">
                 </div>
                 <button type="submit" class="btn-primary" id="submitBtn">Ответить</button>
             </form>
@@ -157,7 +157,7 @@
                 if (data.correct) {
                     resultCard.className = 'card success-card';
                     resultIcon.textContent = '🎉';
-                    resultTitle.textContent = 'Поздравляем!';
+                    resultTitle.textContent = 'Ура!';
                     resultMessage.textContent = data.message;
                     
                     // Show success image if available
