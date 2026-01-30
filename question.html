@@ -310,13 +310,26 @@
             const resultTitle = document.getElementById('resultTitle');
             const resultMessage = document.getElementById('resultMessage');
             const successImageContainer = document.getElementById('successImageContainer');
+            const successImage = document.getElementById('successImage');
             
             if (isCorrect) {
                 resultCard.className = 'card success-card';
                 resultIcon.textContent = '🎉';
                 resultTitle.textContent = 'Поздравляем!';
                 resultMessage.textContent = 'Ответ правильный!';
-                successImageContainer.style.display = 'none';
+                
+                // Show success image if available
+                if (questions[questionId].success_image) {
+                    successImage.src = questions[questionId].success_image;
+                    successImageContainer.style.display = 'block';
+                    
+                    // Handle image load errors
+                    successImage.onerror = function() {
+                        successImageContainer.style.display = 'none';
+                    };
+                } else {
+                    successImageContainer.style.display = 'none';
+                }
                 
                 document.getElementById('answerForm').style.display = 'none';
                 resultCard.style.display = 'block';
