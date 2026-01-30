@@ -40,6 +40,8 @@ def main():
         print("Ошибка: ответ не может быть пустым")
         return
     
+    success_image = input("Введите URL изображения для успеха (опционально, Enter для пропуска): ").strip()
+    
     # Generate ID
     question_id = input("Введите ID вопроса (или нажмите Enter для автогенерации на основе MD5): ").strip()
     if not question_id:
@@ -63,9 +65,14 @@ def main():
     new_question = {
         'id': question_id,
         'question': question,
-        'answer': answer.lower(),
+        'answer': answer,
         'created_at': datetime.now().isoformat()
     }
+    
+    # Add success_image only if provided
+    if success_image:
+        new_question['success_image'] = success_image
+    
     data.append(new_question)
     
     # Save
