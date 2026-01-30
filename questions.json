@@ -3,12 +3,16 @@
     "id": "45bc1b2f6d52be20849294c9cbf584f7",
     "question": "В одной советской книге про США его фотография была в главе под названием \"Империя страха\". А не так давно он заявил в интервью следующее: \"Я достаточно уничтожил деревьев по всему миру\". Назовите его имя и фамилию.",
     "answer": "Стивен Кинг",
-    "success_image": "https://i.imgur.com/3DjUHNM.jpeg"
+    "success_image": "https://i.imgur.com/3DjUHNM.jpeg",
+    "hint_question": "Этот американский писатель известен своими романами ужасов, многие из которых были экранизированы.",
+    "hint_enabled": false
   },
   {
     "id": "05c1d6311bf37b44d8bdfb122ce00a75",
     "question": "В первой половине 1980-х годов ОН жил в Мюнхене. В этот период ЕГО называли Баварской Королевой. Назовите ЕГО.",
     "answer": "Фредди Меркьюри",
-    "success_image": "https://i.imgur.com/iazhbmk.jpeg"
+    "success_image": "https://i.imgur.com/iazhbmk.jpeg",
+    "hint_question": "Солист легендарной рок-группы Queen.",
+    "hint_enabled": false
   }
 ]

@@ -15,6 +15,16 @@
             <div id="questionText" class="question-text">Загрузка вопроса...</div>
         </div>
         
+        <div id="hintCard" class="card" style="display: none;">
+            <div id="hintPurchase" style="display: none;">
+                <p>💡 За 1 золотую монету 🪙 вы можете купить подсказку!</p>
+            </div>
+            <div id="hintContent" style="display: none;">
+                <h3>Подсказка:</h3>
+                <p id="hintText" class="question-text"></p>
+            </div>
+        </div>
+        
         <div id="answerForm" class="card" style="display: none;">
             <h2>Ваш ответ:</h2>
             <form id="submitAnswer">
@@ -124,6 +134,7 @@
                 
                 if (response.ok) {
                     document.getElementById('questionText').textContent = data.question;
+                    displayHint(data.hint_question, data.hint_enabled);
                     document.getElementById('answerForm').style.display = 'block';
                     return;
                 }
@@ -136,6 +147,7 @@
             
             if (fileQuestions[questionId]) {
                 document.getElementById('questionText').textContent = fileQuestions[questionId].question;
+                displayHint(fileQuestions[questionId].hint_question, fileQuestions[questionId].hint_enabled);
                 document.getElementById('answerForm').style.display = 'block';
                 return;
             }
@@ -145,11 +157,37 @@
             
             if (localQuestions[questionId]) {
                 document.getElementById('questionText').textContent = localQuestions[questionId].question;
+                displayHint(localQuestions[questionId].hint_question, localQuestions[questionId].hint_enabled);
                 document.getElementById('answerForm').style.display = 'block';
                 return;
             }
             
             document.getElementById('questionText').textContent = 'Вопрос не найден';
+        }
+        
+        function displayHint(hintQuestion, hintEnabled) {
+            const hintCard = document.getElementById('hintCard');
+            const hintPurchase = document.getElementById('hintPurchase');
+            const hintContent = document.getElementById('hintContent');
+            const hintText = document.getElementById('hintText');
+            
+            if (!hintQuestion) {
+                hintCard.style.display = 'none';
+                return;
+            }
+            
+            hintCard.style.display = 'block';
+            
+            if (hintEnabled) {
+                // Show the hint content
+                hintPurchase.style.display = 'none';
+                hintContent.style.display = 'block';
+                hintText.textContent = hintQuestion;
+            } else {
+                // Show the purchase message
+                hintPurchase.style.display = 'block';
+                hintContent.style.display = 'none';
+            }
         }
         
         function startTimeout(seconds) {
