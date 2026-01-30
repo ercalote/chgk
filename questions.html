@@ -199,48 +199,65 @@
             }
             
             // Fallback to questions.json for GitHub Pages
-            try {
-                const response = await fetch('./questions.json');
-                if (response.ok) {
-                    const data = await response.json();
-                    let questionsArray;
+            // Try multiple paths to ensure it works both locally and on GitHub Pages
+            const pathsToTry = [
+                './questions.json',
+                'questions.json',
+                '/chgk/questions.json'
+            ];
+            
+            for (const path of pathsToTry) {
+                try {
+                    console.log(`Trying to load: ${path}`);
+                    const response = await fetch(path);
+                    console.log(`Response status for ${path}:`, response.status, response.statusText);
                     
-                    // Handle array format (new format)
-                    if (Array.isArray(data)) {
-                        questionsArray = data.map(q => ({
-                            id: q.id,
-                            question: q.question,
-                            url: `question.html?id=${q.id}`,
-                            created_at: q.created_at || ''
-                        }));
-                    } else {
-                        // Handle legacy object format
-                        questionsArray = Object.entries(data.questions || {}).map(([id, q]) => ({
-                            id: id,
-                            question: q.question,
-                            url: `question.html?id=${id}`,
-                            created_at: q.created_at || ''
-                        }));
+                    if (response.ok) {
+                        const data = await response.json();
+                        let questionsArray;
+                        
+                        // Handle array format (new format)
+                        if (Array.isArray(data)) {
+                            questionsArray = data.map(q => ({
+                                id: q.id,
+                                question: q.question,
+                                url: `question.html?id=${q.id}`,
+                                created_at: q.created_at || ''
+                            }));
+                        } else {
+                            // Handle legacy object format
+                            questionsArray = Object.entries(data.questions || {}).map(([id, q]) => ({
+                                id: id,
+                                question: q.question,
+                                url: `question.html?id=${id}`,
+                                created_at: q.created_at || ''
+                            }));
+                        }
+                        
+                        // Sort by creation date
+                        questionsArray.sort((a, b) => {
+                            if (!a.created_at) return 1;
+                            if (!b.created_at) return -1;
+                            return b.created_at.localeCompare(a.created_at);
+                        });
+                        
+                        console.log(`Successfully loaded ${questionsArray.length} questions from ${path}`);
+                        displayQuestions(questionsArray, questionsArray.length);
+                        return;
                     }
-                    
-                    // Sort by creation date
-                    questionsArray.sort((a, b) => {
-                        if (!a.created_at) return 1;
-                        if (!b.created_at) return -1;
-                        return b.created_at.localeCompare(a.created_at);
-                    });
-                    
-                    displayQuestions(questionsArray, questionsArray.length);
-                    return;
+                } catch (error) {
+                    console.error(`Error loading ${path}:`, error);
                 }
-            } catch (error) {
-                console.error('Error loading questions.json:', error);
             }
             
-            // Show error message
+            // Show error message with more details
+            console.error('Failed to load questions from all attempted paths');
             questionsList.innerHTML = `
                 <div class="card empty-state">
                     <p>❌ Не удалось загрузить вопросы</p>
+                    <p style="font-size: 14px; margin-top: 10px;">
+                        Проверьте консоль браузера для деталей.
+                    </p>
                     <p style="font-size: 14px; margin-top: 10px;">
                         Убедитесь, что сервер запущен или файл questions.json существует
                     </p>
