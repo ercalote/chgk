@@ -200,7 +200,7 @@
             
             // Fallback to questions.json for GitHub Pages
             try {
-                const response = await fetch('questions.json');
+                const response = await fetch('./questions.json');
                 if (response.ok) {
                     const data = await response.json();
                     let questionsArray;
