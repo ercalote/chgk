@@ -49,6 +49,8 @@ def create_question():
     question_text = request.json.get('question', '').strip()
     answer = request.json.get('answer', '').strip()
     success_image = request.json.get('success_image', '').strip()
+    hint_question = request.json.get('hint_question', '').strip()
+    hint_enabled = request.json.get('hint_enabled', False)
     
     if not question_text or not answer:
         return jsonify({'error': 'Вопрос и ответ обязательны'}), 400
@@ -68,6 +70,9 @@ def create_question():
         if not (success_image.startswith('http://') or success_image.startswith('https://')):
             return jsonify({'error': 'URL изображения должен начинаться с http:// или https://'}), 400
     
+    if hint_question and len(hint_question) > 5000:
+        return jsonify({'error': 'Подсказка слишком длинная (максимум 5000 символов)'}), 400
+    
     # Generate hash-based ID from question text
     question_id = generate_question_id(question_text)
     
@@ -84,6 +89,11 @@ def create_question():
     # Add success_image only if provided
     if success_image:
         data_obj['questions'][question_id]['success_image'] = success_image
+    
+    # Add hint fields if provided
+    if hint_question:
+        data_obj['questions'][question_id]['hint_question'] = hint_question
+        data_obj['questions'][question_id]['hint_enabled'] = hint_enabled
     
     save_data(data_obj)
     
@@ -126,9 +136,16 @@ def get_question(question_id):
         return jsonify({'error': 'Вопрос не найден'}), 404
     
     question_data = data_obj['questions'][question_id]
-    return jsonify({
+    response = {
         'question': question_data['question']
-    })
+    }
+    
+    # Include hint fields if they exist
+    if 'hint_question' in question_data:
+        response['hint_question'] = question_data['hint_question']
+        response['hint_enabled'] = question_data.get('hint_enabled', False)
+    
+    return jsonify(response)
 
 @app.route('/api/questions', methods=['GET'])
 def list_questions():
@@ -212,6 +229,11 @@ def check_answer(question_id):
     question_data = data_obj['questions'][question_id]
     if 'success_image' in question_data:
         response_data['success_image'] = question_data['success_image']
+    
+    # Include hint fields if available
+    if 'hint_question' in question_data:
+        response_data['hint_question'] = question_data['hint_question']
+        response_data['hint_enabled'] = question_data.get('hint_enabled', False)
     
     return jsonify(response_data)
 
