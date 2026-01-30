@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список вопросов - Что? Где? Когда?</title>
+    <link rel="stylesheet" href="static/style.css">
+    <style>
+        .questions-list {
+            margin-top: 20px;
+        }
+        
+        .question-item {
+            background: white;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        
+        .question-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .question-preview {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .question-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .question-id {
+            font-family: monospace;
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .question-links {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 14px;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-view {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-view:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-copy {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .btn-copy:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .btn-copy.copied {
+            background-color: #27ae60;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .stats {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .stats-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #c0392b;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Назад к админ панели</a>
+        
+        <div class="logo">ЧГК</div>
+        <h1>Список вопросов</h1>
+        <p class="subtitle">Все доступные вопросы и их ссылки</p>
+        
+        <div id="stats" class="stats">
+            <div class="stats-number" id="totalCount">0</div>
+            <div>Всего вопросов</div>
+        </div>
+        
+        <div id="questionsList" class="questions-list">
+            <div class="card">
+                <p style="text-align: center;">Загрузка вопросов...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadQuestions() {
+            const questionsList = document.getElementById('questionsList');
+            const totalCount = document.getElementById('totalCount');
+            
+            try {
+                // Try API first
+                const response = await fetch('/api/questions');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayQuestions(data.questions, data.total);
+                    return;
+                }
+            } catch (error) {
+                console.log('API not available, trying static questions.json');
+            }
+            
+            // Fallback to questions.json for GitHub Pages
+            try {
+                const response = await fetch('questions.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    const questionsArray = Object.entries(data.questions || {}).map(([id, q]) => ({
+                        id: id,
+                        question: q.question,
+                        url: `question.html?id=${id}`,
+                        created_at: q.created_at || ''
+                    }));
+                    
+                    // Sort by creation date
+                    questionsArray.sort((a, b) => {
+                        if (!a.created_at) return 1;
+                        if (!b.created_at) return -1;
+                        return b.created_at.localeCompare(a.created_at);
+                    });
+                    
+                    displayQuestions(questionsArray, questionsArray.length);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error loading questions.json:', error);
+            }
+            
+            // Show error message
+            questionsList.innerHTML = `
+                <div class="card empty-state">
+                    <p>❌ Не удалось загрузить вопросы</p>
+                    <p style="font-size: 14px; margin-top: 10px;">
+                        Убедитесь, что сервер запущен или файл questions.json существует
+                    </p>
+                </div>
+            `;
+        }
+        
+        function displayQuestions(questions, total) {
+            const questionsList = document.getElementById('questionsList');
+            const totalCount = document.getElementById('totalCount');
+            
+            totalCount.textContent = total;
+            
+            if (questions.length === 0) {
+                questionsList.innerHTML = `
+                    <div class="card empty-state">
+                        <p>📝 Вопросов пока нет</p>
+                        <p style="font-size: 14px; margin-top: 10px;">
+                            <a href="/">Создайте первый вопрос</a>
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            questionsList.innerHTML = questions.map(q => `
+                <div class="question-item">
+                    <div class="question-preview">${escapeHtml(q.question)}</div>
+                    <div class="question-meta">
+                        <span class="question-id">${escapeHtml(q.id)}</span>
+                        <div class="question-links">
+                            <a href="${escapeHtml(q.url)}" class="btn-small btn-view" target="_blank">Открыть</a>
+                            <button class="btn-small btn-copy" data-url="${escapeHtml(q.url)}">Копировать ссылку</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add event listeners for copy buttons
+            questionsList.querySelectorAll('.btn-copy').forEach(button => {
+                button.addEventListener('click', function() {
+                    const url = this.getAttribute('data-url');
+                    copyUrl(url, this);
+                });
+            });
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function copyUrl(url, button) {
+            // Make the URL absolute if it's relative
+            let fullUrl = url;
+            if (!url.startsWith('http')) {
+                fullUrl = window.location.origin + (url.startsWith('/') ? '' : '/') + url;
+            }
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(fullUrl).then(() => {
+                    showCopiedState(button);
+                }).catch((err) => {
+                    console.error('Failed to copy to clipboard:', err);
+                    // Fallback to old method
+                    fallbackCopy(fullUrl, button);
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopy(fullUrl, button);
+            }
+        }
+        
+        function fallbackCopy(text, button) {
+            const input = document.createElement('input');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            try {
+                document.execCommand('copy');
+                showCopiedState(button);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Не удалось скопировать ссылку');
+            }
+            document.body.removeChild(input);
+        }
+        
+        function showCopiedState(button) {
+            const originalText = button.textContent;
+            button.textContent = '✓ Скопировано!';
+            button.classList.add('copied');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }
+        
+        // Load questions on page load
+        loadQuestions();
+    </script>
+</body>
+</html>
