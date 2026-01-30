@@ -203,12 +203,25 @@
                 const response = await fetch('questions.json');
                 if (response.ok) {
                     const data = await response.json();
-                    const questionsArray = Object.entries(data.questions || {}).map(([id, q]) => ({
-                        id: id,
-                        question: q.question,
-                        url: `question.html?id=${id}`,
-                        created_at: q.created_at || ''
-                    }));
+                    let questionsArray;
+                    
+                    // Handle array format (new format)
+                    if (Array.isArray(data)) {
+                        questionsArray = data.map(q => ({
+                            id: q.id,
+                            question: q.question,
+                            url: `question.html?id=${q.id}`,
+                            created_at: q.created_at || ''
+                        }));
+                    } else {
+                        // Handle legacy object format
+                        questionsArray = Object.entries(data.questions || {}).map(([id, q]) => ({
+                            id: id,
+                            question: q.question,
+                            url: `question.html?id=${id}`,
+                            created_at: q.created_at || ''
+                        }));
+                    }
                     
                     // Sort by creation date
                     questionsArray.sort((a, b) => {

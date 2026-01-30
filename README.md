@@ -75,16 +75,18 @@ git push
 1. Откройте файл `questions.json` в репозитории
 2. Добавьте новый вопрос в формате:
 ```json
-{
-  "questions": {
-    "md5_hash_of_question": {
-      "question": "Текст вопроса",
-      "answer": "правильный ответ",
-      "created_at": "2026-01-29T00:00:00.000000"
-    }
+[
+  {
+    "id": "md5_hash_of_question",
+    "question": "Текст вопроса",
+    "answer": "правильный ответ",
+    "created_at": "2026-01-29T00:00:00.000000",
+    "success_image": "https://example.com/image.jpg"
   }
-}
+]
 ```
+**Примечание:** Поле `success_image` опционально - изображение будет показано при правильном ответе.
+
 3. Сделайте commit и push
 4. Уникальная ссылка: `https://<username>.github.io/chgk/question.html?id=md5_hash_of_question`
 5. Просмотрите все вопросы на странице: `https://<username>.github.io/chgk/questions.html`

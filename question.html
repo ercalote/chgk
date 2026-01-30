@@ -74,6 +74,17 @@
                 const response = await fetch('questions.json');
                 if (response.ok) {
                     const data = await response.json();
+                    // Convert array to object for backward compatibility
+                    if (Array.isArray(data)) {
+                        const questionsObj = {};
+                        data.forEach(q => {
+                            if (q.id) {
+                                questionsObj[q.id] = q;
+                            }
+                        });
+                        return questionsObj;
+                    }
+                    // Legacy format support
                     return data.questions || {};
                 }
             } catch (e) {

@@ -15,7 +15,7 @@ def load_questions():
     if os.path.exists(QUESTIONS_FILE):
         with open(QUESTIONS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
-    return {'questions': {}}
+    return []
 
 def save_questions(data):
     """Save questions to file."""
@@ -40,6 +40,8 @@ def main():
         print("Ошибка: ответ не может быть пустым")
         return
     
+    success_image = input("Введите URL изображения для успеха (опционально, Enter для пропуска): ").strip()
+    
     # Generate ID
     question_id = input("Введите ID вопроса (или нажмите Enter для автогенерации на основе MD5): ").strip()
     if not question_id:
@@ -50,18 +52,28 @@ def main():
     data = load_questions()
     
     # Check if ID already exists
-    if question_id in data['questions']:
+    existing_question = next((q for q in data if q.get('id') == question_id), None)
+    if existing_question:
         overwrite = input(f"Вопрос с ID '{question_id}' уже существует. Перезаписать? (y/n): ")
         if overwrite.lower() != 'y':
             print("Отменено")
             return
+        # Remove the existing question
+        data = [q for q in data if q.get('id') != question_id]
     
     # Add question
-    data['questions'][question_id] = {
+    new_question = {
+        'id': question_id,
         'question': question,
-        'answer': answer.lower(),
+        'answer': answer,
         'created_at': datetime.now().isoformat()
     }
+    
+    # Add success_image only if provided
+    if success_image:
+        new_question['success_image'] = success_image
+    
+    data.append(new_question)
     
     # Save
     save_questions(data)
