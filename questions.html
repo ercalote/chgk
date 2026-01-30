@@ -200,6 +200,7 @@
             
             // Fallback to questions.json for GitHub Pages
             // Try multiple paths to ensure it works both locally and on GitHub Pages
+            // Note: '/chgk/questions.json' is specific to the GitHub Pages subdirectory
             const pathsToTry = [
                 './questions.json',
                 'questions.json',
@@ -208,9 +209,9 @@
             
             for (const path of pathsToTry) {
                 try {
-                    console.log(`Trying to load: ${path}`);
+                    console.debug(`Attempting to fetch questions from: ${path}`);
                     const response = await fetch(path);
-                    console.log(`Response status for ${path}:`, response.status, response.statusText);
+                    console.debug(`Fetch response for ${path}:`, response.status, response.statusText);
                     
                     if (response.ok) {
                         const data = await response.json();
@@ -241,12 +242,12 @@
                             return b.created_at.localeCompare(a.created_at);
                         });
                         
-                        console.log(`Successfully loaded ${questionsArray.length} questions from ${path}`);
+                        console.log(`Successfully loaded ${questionsArray.length} questions`);
                         displayQuestions(questionsArray, questionsArray.length);
                         return;
                     }
                 } catch (error) {
-                    console.error(`Error loading ${path}:`, error);
+                    console.debug(`Failed to load from ${path}:`, error);
                 }
             }
             
