@@ -13,7 +13,7 @@
     "answer": "Фредди Меркьюри",
     "success_image": "https://i.imgur.com/ThIRL4r.jpeg",
     "hint_question": "Согласно биографическому источнику, ОН сказал Рэю Фостеру: \"Сочувствую твоей жене, если шесть минут для тебя — это долго\". Назовите ЕГО.",
-    "hint_enabled": false
+    "hint_enabled": true
   },
   {
     "id": "5bd7459a678fd58d28ed468c1b61d416",
