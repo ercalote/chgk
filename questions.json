@@ -53,6 +53,6 @@
     "answer": "Рядовой",
     "success_image": "https://i.imgur.com/47wfCuQ.jpeg",
     "hint_question": "В одной статье, посвященной американскому сериалу, отмечается, что удачным переводом каламбурного словосочетания \"general knowledge\" является не \"общее знание\", а \"ТАКОЙ факт\". Какой ТАКОЙ?",
-    "hint_enabled": false
+    "hint_enabled": true
   }
 ]
