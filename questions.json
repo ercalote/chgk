@@ -61,6 +61,6 @@
     "answer": "Семь",
     "success_image": "https://i.imgur.com/lGNbdTk.png",
     "hint_question": "В фильме 1964 года главный герой едва-едва успевает остановить обратный отсчет на бомбе. За сколько секунд до взрыва он это сделал?",
-    "hint_enabled": false
+    "hint_enabled": true
   }
 ]
